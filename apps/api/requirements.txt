@@ -1,0 +1,16 @@
+fastapi>=0.110
+uvicorn[standard]>=0.23
+pydantic>=2.0
+python-dotenv>=1.0
+httpx>=0.27
+azure-cosmos>=4.7
+azure-identity>=1.17
+azure-communication-email>=1.0
+jinja2>=3.1
+# Agent runtime
+langchain>=0.2
+langchain-openai>=0.1
+langgraph>=0.2
+feedparser>=6.0
+# Optional grounding (install if you will use Foundry grounding)
+azure-ai-projects>=1.0.0b1
