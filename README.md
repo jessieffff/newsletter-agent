@@ -1,4 +1,4 @@
-# Newsletter Agent (LangChain/LangGraph + Azure)
+# Newsletter Agent
 
 Build a web-accessible agent that:
 - lets users configure **topics/industries**, optional **sources** (RSS / NYT / X / domains),
