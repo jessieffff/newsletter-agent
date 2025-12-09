@@ -21,28 +21,58 @@ docs/          architecture + plan
 ```
 
 ## Quickstart (local)
-1) Copy env:
+
+### Prerequisites
+- Python 3.10 or higher (required by the agent package)
+- Node.js 18+ (for the Next.js web app)
+
+### 1) Copy environment file:
 ```bash
 cp .env.example .env
 ```
 
-2) Start API:
+### 2) Start the API backend:
+
+**Option A: Using the Makefile (requires `python3` command):**
 ```bash
 make dev-api
 ```
 
-3) Start web:
+**Option B: Manual setup (recommended on macOS):**
+```bash
+cd apps/api
+python3.12 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+pip install -e ../../packages/agent
+./.venv/bin/python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+The API will be available at http://localhost:8000
+- Health check: http://localhost:8000/health
+- API docs: http://localhost:8000/docs
+
+### 3) Start the web frontend:
 ```bash
 export NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 make dev-web
 ```
 
-4) Open the UI:
-- http://localhost:3000/settings → “Send test email” (requires email config)
+Or manually:
+```bash
+cd apps/web
+npm install
+npm run dev
+```
+
+### 4) Open the UI:
+- http://localhost:3000/settings → "Send test email" (requires email config)
 
 ### Local dev notes
 - Default storage is `STORAGE_BACKEND=memory` (in-memory).
 - To enable Cosmos, set `STORAGE_BACKEND=cosmos` + Cosmos env vars.
+- If you encounter "python: command not found", use `python3` or `python3.12` instead.
+
 
 ## Azure deployment (high level)
 - Web → Azure Static Web Apps (GitHub Action included)

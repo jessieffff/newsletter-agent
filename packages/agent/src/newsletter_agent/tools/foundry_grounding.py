@@ -58,7 +58,7 @@ async def grounded_search_via_foundry(query: str, freshness: str = "7d", count: 
 
         # Heuristic URL extraction (citations are in the model response too, but shape varies)
         urls = re.findall(r"https?://\S+", text)
-        urls = [u.strip(").,]"'") for u in urls]
+        urls = [u.strip(").,]\"'") for u in urls]
         seen = set()
         out: List[Candidate] = []
         for u in urls:

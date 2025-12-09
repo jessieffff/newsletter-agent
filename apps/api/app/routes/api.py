@@ -1,7 +1,7 @@
 from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from ..models import UserIn, User, SubscriptionIn, Subscription, NewsletterRun
-from ..main import get_storage
+from ..dependencies import get_storage
 from ..services.agent_runner import run_and_email
 
 router = APIRouter()
