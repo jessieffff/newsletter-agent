@@ -36,6 +36,7 @@ export default function Settings() {
   const [tone, setTone] = useState("concise, professional");
   const [status, setStatus] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const topicList = useMemo(
     () => topics.split(",").map(t => t.trim()).filter(Boolean),
@@ -57,23 +58,75 @@ export default function Settings() {
     enabled: true,
   }), [topicList, sourcesList, itemCount, tone]);
 
+  // Validate form
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    // Email validation
+    if (!email || !email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      newErrors.email = "Invalid email format";
+    }
+
+    // Topics validation
+    if (topicList.length === 0) {
+      newErrors.topics = "At least one topic is required";
+    }
+
+    // RSS URL validation
+    if (rss && rss.trim()) {
+      const urlPattern = /^https?:\/\/.+/i;
+      if (!urlPattern.test(rss)) {
+        newErrors.rss = "Invalid RSS URL format (must start with http:// or https://)";
+      }
+    }
+
+    // Item count validation
+    if (itemCount < 1 || itemCount > 50) {
+      newErrors.itemCount = "Item count must be between 1 and 50";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   async function save() {
+    if (!validateForm()) {
+      setStatus("✗ Please fix validation errors");
+      return;
+    }
+
     setIsLoading(true);
     setStatus("Saving...");
     try {
-      const u = await fetch(`${API_BASE}/v1/users`, {
+      const userResponse = await fetch(`${API_BASE}/v1/users`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
-      }).then(r => r.json());
+      });
 
-      const sub = await fetch(`${API_BASE}/v1/users/${u.id}/subscriptions`, {
+      if (!userResponse.ok) {
+        const errorData = await userResponse.json().catch(() => ({}));
+        throw new Error(errorData.detail?.[0]?.msg || errorData.detail || "Failed to create user");
+      }
+
+      const u = await userResponse.json();
+
+      const subResponse = await fetch(`${API_BASE}/v1/users/${u.id}/subscriptions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-      }).then(r => r.json());
+      });
 
+      if (!subResponse.ok) {
+        const errorData = await subResponse.json().catch(() => ({}));
+        throw new Error(errorData.detail?.[0]?.msg || errorData.detail || "Failed to save subscription");
+      }
+
+      const sub = await subResponse.json();
       setStatus(`✓ Saved subscription ${sub.id}`);
+      setErrors({});
     } catch (error) {
       setStatus(`✗ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
@@ -82,26 +135,52 @@ export default function Settings() {
   }
 
   async function runNow() {
+    if (!validateForm()) {
+      setStatus("✗ Please fix validation errors");
+      return;
+    }
+
     setIsLoading(true);
     setStatus("Running...");
     try {
-      const u = await fetch(`${API_BASE}/v1/users`, {
+      const userResponse = await fetch(`${API_BASE}/v1/users`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
-      }).then(r => r.json());
+      });
 
-      const sub = await fetch(`${API_BASE}/v1/users/${u.id}/subscriptions`, {
+      if (!userResponse.ok) {
+        const errorData = await userResponse.json().catch(() => ({}));
+        throw new Error(errorData.detail?.[0]?.msg || errorData.detail || "Failed to create user");
+      }
+
+      const u = await userResponse.json();
+
+      const subResponse = await fetch(`${API_BASE}/v1/users/${u.id}/subscriptions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-      }).then(r => r.json());
+      });
 
-      const run = await fetch(`${API_BASE}/v1/subscriptions/${sub.id}/run?user_email=${encodeURIComponent(email)}`, {
+      if (!subResponse.ok) {
+        const errorData = await subResponse.json().catch(() => ({}));
+        throw new Error(errorData.detail?.[0]?.msg || errorData.detail || "Failed to save subscription");
+      }
+
+      const sub = await subResponse.json();
+
+      const runResponse = await fetch(`${API_BASE}/v1/subscriptions/${sub.id}/run?user_email=${encodeURIComponent(email)}`, {
         method: "POST",
-      }).then(r => r.json());
+      });
 
+      if (!runResponse.ok) {
+        const errorData = await runResponse.json().catch(() => ({}));
+        throw new Error(errorData.detail || "Failed to run newsletter");
+      }
+
+      const run = await runResponse.json();
       setStatus(`✓ Run ${run.id}: ${run.status}`);
+      setErrors({});
     } catch (error) {
       setStatus(`✗ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
@@ -158,7 +237,11 @@ export default function Settings() {
                       placeholder="your@email.com"
                       value={email}
                       onChange={e => setEmail(e.target.value)}
+                      className={errors.email ? "border-red-500" : ""}
                     />
+                    {errors.email && (
+                      <p className="text-xs text-red-500">{errors.email}</p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -167,10 +250,15 @@ export default function Settings() {
                       placeholder="e.g., ai agents, cloud, startups"
                       value={topics}
                       onChange={e => setTopics(e.target.value)}
+                      className={errors.topics ? "border-red-500" : ""}
                     />
-                    <p className="text-xs text-muted-foreground">
-                      These topics help filter content from your sources
-                    </p>
+                    {errors.topics ? (
+                      <p className="text-xs text-red-500">{errors.topics}</p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        These topics help filter content from your sources
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -190,13 +278,18 @@ export default function Settings() {
                     <Input
                       type="number"
                       min={1}
-                      max={20}
+                      max={50}
                       value={itemCount}
                       onChange={e => setItemCount(Number(e.target.value))}
+                      className={errors.itemCount ? "border-red-500" : ""}
                     />
-                    <p className="text-xs text-muted-foreground">
-                      How many articles to include (1-20)
-                    </p>
+                    {errors.itemCount ? (
+                      <p className="text-xs text-red-500">{errors.itemCount}</p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        How many articles to include (1-50)
+                      </p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -263,10 +356,15 @@ export default function Settings() {
                   placeholder="https://example.com/feed.xml"
                   value={rss}
                   onChange={e => setRss(e.target.value)}
+                  className={errors.rss ? "border-red-500" : ""}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Add a custom RSS feed for your newsletter content
-                </p>
+                {errors.rss ? (
+                  <p className="text-xs text-red-500">{errors.rss}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Add a custom RSS feed for your newsletter content
+                  </p>
+                )}
               </div>
 
               {/* Sources Chips */}
