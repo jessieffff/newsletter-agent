@@ -9,14 +9,14 @@ Fetch and normalize RSS items to a standard format.
 - Deduplication by URL
 
 ## TODO
-- [ ] RSS parser library (feedparser)
-- [ ] Tool: fetch_rss_feed(url) → returns raw items
-- [ ] Normalize to: {title, url, source, published_at}
-- [ ] Canonical URL extraction (strip tracking params)
-- [ ] Dedupe logic: group by canonical_url, keep most recent
-- [ ] Test with 3–5 real RSS feeds
+- [x] RSS parser library (feedparser)
+- [x] Tool: fetch_rss_feed(url) → returns raw items
+- [x] Normalize to: {title, url, source, published_at}
+- [x] Canonical URL extraction (strip tracking params)
+- [x] Dedupe logic: group by canonical_url, keep most recent
+- [x] Test with 3–5 real RSS feeds
 
 ## Acceptance checks
-- For known RSS feed: get 10–20 valid items
-- No duplicate URLs in output
-- Handles malformed feeds gracefully (skip bad items, continue)
+- [x] For known RSS feed: get 10–20 valid items
+- [x] No duplicate URLs in output
+- [x] Handles malformed feeds gracefully (skip bad items, continue)
