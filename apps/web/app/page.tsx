@@ -1,81 +1,87 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowRight, Mail, Settings, History } from "lucide-react";
+import { ArrowRight, Mail, Settings as SettingsIcon, History } from "lucide-react";
 
 export default function Home() {
   return (
-    <div className="space-y-8">
-      {/* Hero Section */}
-      <section className="py-12">
-        <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-4">
-          Your personalized news newsletter
-        </h1>
-        <p className="text-xl text-muted-foreground max-w-2xl mb-8">
-          Configure topics and sources, choose a frequency, and get an AI-powered email newsletter curated just for you.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-4">
+    <div className="space-y-6">
+      {/* Header (matches Settings/Example tone) */}
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold tracking-tight">Welcome to Newsletter Agent</h1>
+        <p className="text-muted-foreground">Configure topics, generate a sample, and schedule delivery.</p>
+      </div>
+
+      {/* Get Started Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <SettingsIcon className="h-6 w-6" />
+            Get Started
+          </CardTitle>
+          <CardDescription>Set your preferences and try a sample generation.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col sm:flex-row gap-3">
           <a href="/settings">
-            <Button size="lg" className="w-full sm:w-auto">
-              Get Started <ArrowRight className="ml-2 h-4 w-4" />
+            <Button className="w-full sm:w-auto">
+              Open Settings <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
+          </a>
+          <a href="/examples/newsletter">
+            <Button variant="outline" className="w-full sm:w-auto">View Example</Button>
           </a>
           <a href="/history">
-            <Button size="lg" variant="outline" className="w-full sm:w-auto">
-              View History
-            </Button>
+            <Button variant="ghost" className="w-full sm:w-auto">View History</Button>
           </a>
-        </div>
-      </section>
+        </CardContent>
+      </Card>
 
-      {/* Features Grid */}
-      <section>
-        <h2 className="text-2xl font-bold mb-6">How it works</h2>
-        <div className="grid md:grid-cols-3 gap-6">
+      {/* How it works */}
+      <div className="space-y-4">
+        <h2 className="text-2xl font-bold">How it works</h2>
+        <div className="grid md:grid-cols-3 gap-4">
           <Card>
             <CardHeader>
-              <Settings className="h-8 w-8 mb-2 text-primary" />
+              <SettingsIcon className="h-7 w-7 text-primary" />
               <CardTitle>Configure</CardTitle>
-              <CardDescription>Set up topics, sources, and preferences</CardDescription>
+              <CardDescription>Choose topics, tone, and sources</CardDescription>
             </CardHeader>
-            <CardContent>
-              Choose from RSS feeds, NYT, X (Twitter), and more. Filter by topics and set your tone.
+            <CardContent className="text-sm text-muted-foreground">
+              Add RSS feeds and select your style. The agent will focus on what matters.
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader>
-              <Mail className="h-8 w-8 mb-2 text-primary" />
+              <Mail className="h-7 w-7 text-primary" />
               <CardTitle>Generate</CardTitle>
-              <CardDescription>AI creates your newsletter</CardDescription>
+              <CardDescription>AI writes concise summaries</CardDescription>
             </CardHeader>
-            <CardContent>
-              Our agent reads recent articles and writes a personalized summary just for you.
+            <CardContent className="text-sm text-muted-foreground">
+              It summarizes fresh articles and formats an email-friendly newsletter.
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader>
-              <History className="h-8 w-8 mb-2 text-primary" />
-              <CardTitle>Receive</CardTitle>
-              <CardDescription>Get newsletters on schedule</CardDescription>
+              <History className="h-7 w-7 text-primary" />
+              <CardTitle>Deliver</CardTitle>
+              <CardDescription>Send on your schedule</CardDescription>
             </CardHeader>
-            <CardContent>
-              Emails arrive on your preferred schedule—daily, weekly, or custom cron.
+            <CardContent className="text-sm text-muted-foreground">
+              Receive emails daily, weekly, or via a custom schedule.
             </CardContent>
           </Card>
         </div>
-      </section>
+      </div>
 
-      {/* CTA Section */}
-      <section className="bg-muted rounded-lg p-8 text-center">
-        <h2 className="text-3xl font-bold mb-4">Ready to get started?</h2>
-        <p className="text-muted-foreground mb-6 max-w-xl mx-auto">
-          Configure your first newsletter and send a test email to see it in action.
-        </p>
-        <a href="/settings">
-          <Button size="lg">Go to Settings</Button>
-        </a>
-      </section>
+      {/* Final CTA */}
+      <Card>
+        <CardContent className="p-6 flex flex-col items-center text-center gap-3">
+          <h3 className="text-xl font-semibold">Ready to get started?</h3>
+          <p className="text-muted-foreground max-w-xl">Open settings to configure your first newsletter and send a test email.</p>
+          <a href="/settings">
+            <Button size="lg">Go to Settings</Button>
+          </a>
+        </CardContent>
+      </Card>
     </div>
   );
 }

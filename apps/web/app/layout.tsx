@@ -23,6 +23,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   <a href="/history" className="text-sm font-medium hover:text-foreground/80 transition-colors">
                     History
                   </a>
+                  <a href="/examples/newsletter" className="text-sm font-medium hover:text-foreground/80 transition-colors">
+                    Example
+                  </a>
                 </nav>
               </div>
             </div>

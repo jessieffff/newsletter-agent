@@ -1,0 +1,36 @@
+{
+  "subscription": {
+    "id": "sub-1",
+    "user_id": "user-1",
+    "topics": ["Azure OpenAI", "AI", "cloud"],
+    "item_count": 3,
+    "tone": "concise, professional",
+    "sources": []
+  },
+  "candidates": [
+    {
+      "id": "ms-learn-aoai-overview",
+      "title": "What is Azure OpenAI Service?",
+      "url": "https://learn.microsoft.com/en-us/azure/ai-services/openai/overview",
+      "source": "Microsoft Learn",
+      "snippet": "Service overview of Azure OpenAI including supported models, enterprise integrations, and responsible AI guidance.",
+      "published_at": "2025-06-01T00:00:00Z"
+    },
+    {
+      "id": "azure-blog-foundry",
+      "title": "Azure AI Studio is now Azure AI Foundry",
+      "url": "https://azure.microsoft.com/en-us/blog/azure-ai-studio-is-now-azure-ai-foundry/",
+      "source": "Azure Blog",
+      "snippet": "Microsoft unifies tooling for building, evaluating, and shipping AI apps under Azure AI Foundry.",
+      "published_at": "2024-11-15T00:00:00Z"
+    },
+    {
+      "id": "openai-api-overview",
+      "title": "OpenAI API overview",
+      "url": "https://platform.openai.com/docs/overview",
+      "source": "OpenAI Docs",
+      "snippet": "How to call GPT models, manage API keys, and follow best practices for reliability and safety.",
+      "published_at": "2025-03-01T00:00:00Z"
+    }
+  ]
+}
