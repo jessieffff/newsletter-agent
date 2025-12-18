@@ -142,6 +142,66 @@ class Newsletter(BaseModel):
     items: List[SelectedItem]
 
 
+# LLM Tool Input/Output Models
+
+class CandidateForRanking(BaseModel):
+    """Candidate item prepared for LLM ranking."""
+    id: str
+    title: str
+    url: str
+    source: str
+    published_at: Optional[str] = None  # ISO 8601 if present
+    snippet: Optional[str] = None
+
+
+class RankAndSelectInput(BaseModel):
+    """Input schema for rank_and_select LLM tool."""
+    topics: List[str]
+    target_count: int
+    max_per_domain: int = 2
+    candidates: List[CandidateForRanking]
+
+
+class RankAndSelectOutput(BaseModel):
+    """Output schema for rank_and_select LLM tool."""
+    selected_ids: List[str]
+    reasons: Dict[str, str]  # id -> reason
+    rejected: Optional[List[Dict[str, str]]] = Field(default_factory=list)  # [{id, reason}]
+
+
+class SelectedItemForDraft(BaseModel):
+    """Selected item prepared for newsletter drafting."""
+    id: str
+    title: str
+    url: str
+    source: str
+    published_at: Optional[str] = None
+    snippet: Optional[str] = None
+
+
+class DraftNewsletterInput(BaseModel):
+    """Input schema for draft_newsletter_items LLM tool."""
+    tone: str
+    max_summary_sentences: int = 3
+    items: List[SelectedItemForDraft]
+
+
+class DraftedItem(BaseModel):
+    """Individual drafted newsletter item."""
+    id: str
+    title: str
+    source: str
+    url: str
+    why_it_matters: str  # exactly 1 sentence
+    summary: str  # 2-3 sentences, <= max_summary_sentences
+
+
+class DraftNewsletterOutput(BaseModel):
+    """Output schema for draft_newsletter_items LLM tool."""
+    subject: str
+    items: List[DraftedItem]
+
+
 class AgentState(TypedDict, total=False):
     """State passed between workflow nodes."""
     subscription: Subscription

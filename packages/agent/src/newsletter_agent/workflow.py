@@ -9,7 +9,10 @@ from collections import Counter
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import InMemorySaver
 
-from .types import Subscription, Newsletter, AgentState
+from .types import (
+    Subscription, Newsletter, AgentState, 
+    CandidateForRanking, SelectedItemForDraft, SelectedItem, Error
+)
 from .ranking import simple_rank
 from .safety import check_node_execution_limit
 from .fetchers import (
@@ -20,6 +23,7 @@ from .fetchers import (
     filter_and_dedupe_candidates,
 )
 from .llm_ops import generate_newsletter_content
+from .tools import llm_rank_and_select, llm_draft_newsletter_items
 from .observability import span as otel_span
 
 
@@ -117,6 +121,13 @@ async def node_select_and_write(state: AgentState) -> AgentState:
     logger = logging.getLogger("newsletter_agent")
     start_time = time.time()
 
+    # Initialize telemetry variables
+    used_llm_ranker = False
+    used_llm_drafter = False
+    llm_ranker_fallback_reason = None
+    llm_drafter_fallback_reason = None
+    max_per_domain_enforced = False
+
     with otel_span(
         "agent.node.select_and_write",
         attributes={
@@ -132,17 +143,139 @@ async def node_select_and_write(state: AgentState) -> AgentState:
 
         # Filter and dedupe candidates
         candidates = filter_and_dedupe_candidates(state.get("candidates") or [], state)
-        # Rank and pick top N
-        ranked = simple_rank(candidates)
-        picked = ranked[:subscription.item_count]
+        
+        if not candidates:
+            logger.warning("No candidates available for selection")
+            state["selected"] = []
+            state["newsletter"] = Newsletter(subject="No content available", html="", text="", items=[])
+            state["status"] = "failed"
+            return state
 
-        # Generate newsletter content (handles all fallback cases)
-        selected, newsletter = await generate_newsletter_content(
-            subscription, picked, state
-        )
+        # Assign stable IDs for LLM processing
+        candidates_for_ranking = []
+        for idx, candidate in enumerate(candidates):
+            candidate_id = f"cand:{idx}"
+            candidates_for_ranking.append(CandidateForRanking(
+                id=candidate_id,
+                title=candidate.title,
+                url=str(candidate.url),
+                source=candidate.source,
+                published_at=candidate.published_at,
+                snippet=candidate.snippet
+            ))
 
-        state["selected"] = selected
-        state["newsletter"] = newsletter
+        # Use LLM to rank and select candidates
+        try:
+            selected_ids, used_llm_ranker, llm_ranker_fallback_reason = await llm_rank_and_select(
+                topics=subscription.topics,
+                target_count=subscription.item_count,
+                max_per_domain=2,  # Default from spec
+                candidates=candidates_for_ranking,
+                state=state
+            )
+
+            # Check if domain enforcement was needed
+            if len(selected_ids) != subscription.item_count and len(candidates_for_ranking) >= subscription.item_count:
+                max_per_domain_enforced = True
+
+            # Map selected IDs back to original candidates
+            id_to_candidate = {c.id: candidates[i] for i, c in enumerate(candidates_for_ranking)}
+            picked = [id_to_candidate[sid] for sid in selected_ids if sid in id_to_candidate]
+
+        except Exception as e:
+            logger.error(f"LLM ranking failed: {e}")
+            # Add error to state
+            if "errors" not in state:
+                state["errors"] = []
+            state["errors"].append(Error(
+                source="llm",
+                code="rank_and_select_failed", 
+                message=f"LLM ranking failed: {str(e)}"
+            ))
+            
+            # Fallback to simple ranking
+            ranked = simple_rank(candidates)
+            picked = ranked[:subscription.item_count]
+            used_llm_ranker = False
+            llm_ranker_fallback_reason = f"exception: {str(e)}"
+
+        # Prepare items for drafting
+        items_for_drafting = []
+        for idx, candidate in enumerate(picked):
+            items_for_drafting.append(SelectedItemForDraft(
+                id=f"item:{idx}",
+                title=candidate.title,
+                url=str(candidate.url),
+                source=candidate.source,
+                published_at=candidate.published_at,
+                snippet=candidate.snippet
+            ))
+
+        # Use LLM to draft newsletter content
+        try:
+            draft_output, used_llm_drafter, llm_drafter_fallback_reason = await llm_draft_newsletter_items(
+                tone=subscription.tone,
+                max_summary_sentences=3,
+                items=items_for_drafting,
+                state=state
+            )
+
+            # Convert draft output to final format
+            if draft_output and "items" in draft_output:
+                selected_items = []
+                for draft_item in draft_output["items"]:
+                    # Find corresponding picked candidate
+                    item_id = draft_item["id"]
+                    item_index = int(item_id.split(":")[1]) if ":" in item_id else 0
+                    if item_index < len(picked):
+                        original_candidate = picked[item_index]
+                        selected_items.append(SelectedItem(
+                            title=draft_item.get("title", original_candidate.title),
+                            url=original_candidate.url,
+                            source=draft_item.get("source", original_candidate.source),
+                            published_at=original_candidate.published_at,
+                            why_it_matters=draft_item.get("why_it_matters", "This story provides important updates."),
+                            summary=draft_item.get("summary", "Summary not available.")
+                        ))
+
+                # Create newsletter
+                from .render import render_newsletter  # Import here to avoid circular imports
+                html_content = render_newsletter(
+                    subject=draft_output.get("subject", "Newsletter Update"),
+                    items=selected_items
+                )
+                
+                newsletter = Newsletter(
+                    subject=draft_output.get("subject", "Newsletter Update"),
+                    html=html_content,
+                    text="",  # Could implement text version
+                    items=selected_items
+                )
+
+                state["selected"] = selected_items
+                state["newsletter"] = newsletter
+            else:
+                raise ValueError("Invalid draft output format")
+
+        except Exception as e:
+            logger.error(f"LLM drafting failed: {e}")
+            # Add error to state
+            if "errors" not in state:
+                state["errors"] = []
+            state["errors"].append(Error(
+                source="llm",
+                code="draft_newsletter_items_failed",
+                message=f"LLM drafting failed: {str(e)}"
+            ))
+
+            # Fallback to existing generate_newsletter_content
+            selected, newsletter = await generate_newsletter_content(
+                subscription, picked, state
+            )
+            state["selected"] = selected
+            state["newsletter"] = newsletter
+            used_llm_drafter = False
+            llm_drafter_fallback_reason = f"exception: {str(e)}"
 
         # Set status based on approval requirement
         if state.get("status") != "failed":  # Don't override failed status
@@ -150,16 +283,21 @@ async def node_select_and_write(state: AgentState) -> AgentState:
                 state["status"] = "draft"
             else:
                 state["status"] = "approved"
-    
-        # Log metrics
+
+        # Log metrics with telemetry
         elapsed_time = time.time() - start_time
         logger.info(
             "Node execution completed: select_and_write",
             extra={
                 "node_name": "select_and_write",
                 "latency_seconds": round(elapsed_time, 3),
-                "selected_count": len(selected),
+                "selected_count": len(state.get("selected", [])),
                 "status": state.get("status"),
+                "used_llm_ranker": used_llm_ranker,
+                "used_llm_drafter": used_llm_drafter,
+                "llm_ranker_fallback_reason": llm_ranker_fallback_reason,
+                "llm_drafter_fallback_reason": llm_drafter_fallback_reason,
+                "max_per_domain_enforced": max_per_domain_enforced,
             },
         )
 
