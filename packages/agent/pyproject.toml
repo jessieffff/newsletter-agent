@@ -19,6 +19,7 @@ dependencies = [
   "opentelemetry-api>=1.24",
   "markdown-it-py>=3.0",
   "bleach>=6.1",
+  "python-dateutil>=2.8",
 ]
 
 [project.scripts]
